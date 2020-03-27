@@ -1,4 +1,4 @@
-use std::env;
+use std::env::{*, Args};
 use std::fs;
 use std::error::Error;
 
@@ -9,12 +9,18 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
+    pub fn new(args: Args) -> Result<Config, &'static str> {
         if args.len() < 3 {
             return Err("not enough arguments");
         }
-        let query = args[1].clone();
-        let filename = args[2].clone();
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+        let filename = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a filename"),
+        };
 
         let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
 
