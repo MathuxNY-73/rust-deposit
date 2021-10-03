@@ -10,6 +10,8 @@ use ctrlc;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    listener.set_nonblocking(true).expect("Cannot set non-blocking");
+
     let pool = ThreadPool::new(4);
 
     let is_term = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -25,13 +27,20 @@ fn main() {
             break;
         }
 
-        let stream = stream.unwrap();
+        match stream {
+            Ok(stream) => {
 
-        pool.execute(|| {
-            if let Err(e) = handle_connection(stream) {
-               panic!("{}", e);
+                pool.execute(|| {
+                if let Err(e) = handle_connection(stream) {
+                   panic!("{}", e);
+                }
+                });
             }
-        });
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                continue;
+            }
+            Err(e) => panic!("Encountered IO Error {}", e),
+        }
     }
 
     println!("Shutting down the server");
