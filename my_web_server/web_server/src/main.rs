@@ -1,6 +1,9 @@
-use tokio::net::TcpListener;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::http::header::ContentType;
+use actix_web::web::Bytes;
+
+use image::io::Reader as ImageReader;
+use image::{DynamicImage, ImageResult};
 
 /*
 #[tokio::main]
@@ -46,6 +49,19 @@ async fn echo(req_body: String) -> impl Responder {
     HttpResponse::Ok().body(req_body)
 }
 
+#[get("/picture")]
+async fn picture() -> impl Responder {
+    let img_res = read_image("./data/my_image.jpg");
+    if let Err(e) = img_res {
+        panic!("Could not read image with error {}", e);
+    }
+    let img = img_res.unwrap();
+
+    HttpResponse::Ok()
+        .set(ContentType::png())
+        .body(Bytes::from(img.to_bytes()))
+}
+
 async fn manual_hello() -> impl Responder {
     HttpResponse::Ok().body("Hey there!")
 }
@@ -56,9 +72,15 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .service(hello)
             .service(echo)
+            .service(picture)
             .route("/hey", web::get().to(manual_hello))
     })
     .bind("127.0.0.1:8080")?
     .run()
     .await
+}
+
+fn read_image(path: &str) -> ImageResult<DynamicImage> {
+    let img = ImageReader::open(path)?.decode()?;
+    ImageResult::Ok(img)
 }
