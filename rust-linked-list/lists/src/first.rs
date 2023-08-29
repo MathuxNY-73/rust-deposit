@@ -86,10 +86,10 @@ impl Drop for List {
 
 mod test {
 
-    use super::List;
-
     #[test]
     fn basics() {
+        use super::List;
+
         let mut list = List::new();
 
         // Check empty list behaves right
