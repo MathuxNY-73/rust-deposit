@@ -2,8 +2,13 @@
 // useful for trivial wrappers around other types.
 pub struct IntoIter<T>(List<T>);
 
-pub struct Iter<T> {
-    next: Option<&Node<T>>,
+// Iter is generic over *some* lifetime, it doesn't care.
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>,
+}
+
+pub struct IterMut<'a, T> {
+    next: Option<&'a mut Node<T>>,
 }
 
 pub struct List<T> {
@@ -26,6 +31,35 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
+// We *do* have a lifetime here, because Iter has one that we need to define
+impl<'a, T> Iterator for Iter<'a, T> {
+    // Need it here too, this a type declaration
+    type Item = &'a T;
+
+    // None of this needs to change, handled by the above.
+    // Self continues to be incredibly hype and amazing.
+    //
+    // The following can be de-sugared into:
+    //   fn next<'b>(&'b mut self) -> Option<&'a T> { ... }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.take().map(|node| {
+            self.next = node.next.as_deref();
+            &node.elem
+        })
+    }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.take().map(|node| {
+            self.next = node.next.as_deref_mut();
+            &mut node.elem
+        })
+    }
+}
+
 impl<T> List<T> {
     pub fn new() -> Self {
         List { head: None }
@@ -35,8 +69,24 @@ impl<T> List<T> {
         IntoIter(self)
     }
 
-    pub fn iter(&self) -> Iter<T> {
-        Iter { next: self.head.as_ref() }
+    // We declare a fresh lifetime here for the *exact* borrow that
+    // creates the iter. Now &self needs to be valid as long as the
+    // Iter is around.
+    //
+    // Lifetime can be elided here so we can also write:
+    //  - pub fn iter(&self) -> Iter<T> { ... }
+    //  - pub fn iter(&self) -> Iter<'_, T> { ... } using the '_ explicitely elided
+    //    lifetime.
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+        Iter { next: self.head.as_ref().map::<&Node<T>, _>(|node| node) }  // deref coercion
+        // Could also be written as:
+        //  - Iter { next: self.head.as_deref() }
+        //  - Iter { next: self.head.as_ref().map(|node| &**node )}
+
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        IterMut { next: self.head.as_deref_mut() }
     }
 
     pub fn push(&mut self, elem: T) {
@@ -143,6 +193,37 @@ mod test {
         assert_eq!(iter.next(), Some(3));
         assert_eq!(iter.next(), Some(2));
         assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn iter() {
+        use super::List;
+
+        let mut list = List::new();
+
+        list.push(1); list.push(2); list.push(3);
+
+        let mut iter = list.iter();
+
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn iter_mut() {
+        use super::List;
+
+        let mut list = List::new();
+
+        list.push(1); list.push(2); list.push(3);
+
+        let mut iter = list.iter_mut();
+        assert_eq!(iter.next(), Some(&mut 3));
+        assert_eq!(iter.next(), Some(&mut 2));
+        assert_eq!(iter.next(), Some(&mut 1));
         assert_eq!(iter.next(), None);
     }
 }
