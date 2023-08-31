@@ -68,6 +68,7 @@ impl<T> Drop for List<T> {
     }
 }
 
+#[cfg(test)]
 mod test {
 
     #[derive(Debug, PartialEq, Clone)]
