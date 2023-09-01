@@ -64,6 +64,13 @@ impl<T> List<T> {
             Rc::try_unwrap(old_head).ok().unwrap().into_inner().elem
         })
     }
+
+    pub fn peek_front(&self) -> Option<Ref<T>> {
+        self.head.as_ref().map(|head_ref| Ref::map(head_ref.borrow(), |head| &node.elem))
+    }
+
+    pub fn peek_front_mut() -> Option<RefMut<T>> {
+    }
 }
 
 impl<T> Drop for List<T> {
