@@ -1,6 +1,5 @@
 use lists::borrow_checker;
 
-
 fn main() {
     // borrow_checker::basic_borrows();
     // borrow_checker::basic_unsafe_borrows();
