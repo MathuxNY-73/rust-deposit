@@ -1,4 +1,5 @@
 use lists::borrow_checker;
+use lists::sixth::assert_properties;
 
 fn main() {
     // borrow_checker::basic_borrows();
@@ -18,4 +19,5 @@ fn main() {
     borrow_checker::testing_interior_mutability_with_unsafe_cell();
 
     borrow_checker::testing_box();
+    assert_properties();
 }
